@@ -1,0 +1,206 @@
+---
+title: "Trabalhando com dados da web no R"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## O começo é bastante simples.
+
+Dá-se um nome curto ao arquivo que se encontra na web. É um string, está entre aspas!
+```{r}
+csv_url <- "http://s3.amazonaws.com/assets.datacamp.com/production/course_1561/datasets/chickwts.csv"
+tsv_url <- "http://s3.amazonaws.com/assets.datacamp.com/production/course_3026/datasets/tsv_data.tsv"
+```
+
+Cria-se o data frame a partir da leitura dos arquivos.
+```{r}
+csv_data <- read.csv(csv_url)
+tsv_data <- read.delim(tsv_url)
+```
+
+Examina-se o data frame.
+```{r}
+head(csv_data)
+head(tsv_data)
+```
+
+Podemos ainda fazer o download e ao mesmo tempo já escolhermos um arquivo de destino, no caso "feed_data.csv".
+```{r}
+download.file(url = csv_url, destfile = "feed_data.csv")
+# Lendo o arquivo para confirmar.
+csv_data <- read.csv("feed_data.csv")
+```
+
+Agora criamos uma nova coluna, weight ao quadrado e acrescentamos ao csv_data.
+Depois salvamos como RDS ("modified_feed_data.RDS"),
+lemos, criamos o df modified_feed_data e
+examinamos sua estrutura.
+
+```{r}
+csv_data$square_weight <- (csv_data$weight)^2
+saveRDS(object = csv_data, file = "modified_feed_data.RDS")
+modified_feed_data <- readRDS(file = "modified_feed_data.RDS")
+str(modified_feed_data)
+```
+
+# GET request. É pedir para pegar algo, algum dado da web. 
+O pacote que faz isso é o httr. 
+O get_result é o que pegou.
+O pageview_data é o conteúdo do que pegou. É importante observar esta diferença.
+```{r}
+library(httr)
+get_result <- GET("http://httpbin.org/get")
+print(get_result)
+pageview_data <- content(get_result)
+print(pageview_data)
+str(pageview_data)
+```
+
+# O oposto de GET é o POST. 
+Neste você pede ao servidor que aceite algo seu.
+```{r}
+library(httr)
+post_result <- POST(url = "http://httpbin.org/post", body = "this is a test")
+post_result
+```
+
+# Fazendo queries para url.
+Não sei exatamente o que significa e para o que serve, mas certamente tem uma função. 
+Por hora vou abstrair e ver como se fazem estas queries.
+No caso abaixo colei 3 strings que formaram o directory_url e depois fiz o GET.
+```{r}
+directory_url <- paste("http://swapi.co/api", "people", "1", sep = "/")
+result <- GET(directory_url)
+```
+
+# Agora queries mais sofisticadas.
+Pode-se fazer as queries com paste, mas é mais prático usar o método abaixo.
+Criou-se uma lista denominada query_params, depois colocou-a após a url.
+
+```{r}
+query_params <- list(nationality = "americans", 
+    country = "antigua")
+parameter_response <- GET("https://httpbin.org/get", query = query_params)
+parameter_response
+```
+
+# Respectful API usage. Uso respeitoso do API.
+Quando fazemos um pedido (GET) ou entregamos algo (POST) é de bom tom nos identificarmos e não fazer isso a todo instante.
+
+Por exemplo: GET("http://url.goes.here/", user_agent("somefakeemail@domain.com http://project.website")).
+Acima temos o GET com o url mais o user_agent, que é composto do e-mail e da url do projeto.
+
+Para não fazermos um GET a todo momento usamos o script abaixo.
+```{r}
+#vetor com os urls.
+urls <- c("http://fakeurl.com/api/1.0/", "http://fakeurl.com/api/2.0/")
+
+#for loop pegando os urls de 5 em 5 segundos.
+for(url in urls){
+    # Send a GET request to url
+    result <- GET(url)
+    # Delay for 5 seconds between requests
+    Sys.sleep(5)
+}
+```
+
+O sript abaixo tem 3 etapas.
+1. Cria a função get_pageviews, que produz um url a partir de um título de artigo (article_tile).
+2. Faz um GET respeitável (com user_agent) deste url e verifica se o GET deu certo.
+response pode ser o resultado ou o aviso "the request failed".
+3. Por fim, não satisfeito com a response, pede seu conteúdo.
+```{r}
+get_pageviews <- function(article_title){
+  url <- paste(
+    "https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/all-agents", 
+    article_title, 
+    "daily/2015100100/2015103100", 
+    sep = "/"
+  )   
+  response <- GET(url, user_agent("my@email.com this is a test")) 
+  # Is there an HTTP error?
+  if(http_error(response)){ 
+    # Throw an R error
+    stop("the request failed") 
+  }
+  # Return the response's content
+  content(response)
+}
+```
+
+# Estou confiando no Datacamp!
+Entendi os scripts mas me perdi um pouco na visão geral. Estou dizendo isto por que agora vamos conhecer um pouco dos arquivos JSON e XML.
+
+# Parsing JSON.
+Transformando os arquivos json em objetos do R para poderem ser trabalhados.
+
+```{r}
+# Usa a função (criada pelo Datacamp) revisão histórica "Hadley Wickham"
+resp_json <- rev_history("Hadley Wickham")
+
+# Verifica o http_type() de resp_json
+http_type(resp_json)
+
+# Examina o conteúdo como texto.
+content(resp_json, as = "text")
+
+# Examina o conteúdo parsed.
+content(resp_json, as = "parsed")
+
+# Parse returned text with fromJSON()
+library(jsonlite)
+fromJSON(content(resp_json, as = "text"))
+```
+
+# Transformando um JSON num data frame (pacote rlist).
+Agora algumas coisas começam a clarear.
+1. Carrega o pacote rlist.
+2. Examina a estrutura (str) do resp_json.
+3. Cria o revs (é uma lista). Que é o conteúdo do revisions.Chega-se a ele passando pelo query, pages, 4191...
+4. Cria o user_time, que seleciona na lista revs o user e o timestamp.
+5. Por fim, transforma o user_time num data frame.
+
+```{r}
+# Load rlist
+library(rlist)
+
+# Examine output of this code
+str(content(resp_json), max.level = 4)
+
+# Store revision list
+revs <- content(resp_json)$query$pages$`41916270`$revisions
+
+# Extract the user element
+user_time <- list.select(revs, user, timestamp)
+
+# Print user_time
+print(user_time)
+
+# Stack to turn into a data frame
+list.stack(user_time)
+```
+
+# Transformando um JSON num data frame, via dplyr.
+Muito mais fácil de entender!
+1. Carrega o dplyr.
+2. Cria o revs (é uma lista). Que é o conteúdo do revisions. Chega-se a ele passando pelo query, pages, 4191...
+3. Cola-se as linhas e seleciona-se as colunas desejadas.
+
+```{r}
+# Load dplyr
+library(dplyr)
+
+# Pull out revision list
+revs <- content(resp_json)$query$pages$`41916270`$revisions
+
+# Extract user and timestamp
+revs %>%
+  bind_rows %>%           
+  select(user, timestamp)
+```
+
+# A estrutura do XML.
+É importante porque é o tipo de arquivo usado para as NFes.
