@@ -1,0 +1,88 @@
+---
+title: "Trabalhando com dados da web no R"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## O começo é bastante simples.
+
+Dá-se um nome curto ao arquivo que se encontra na web. É um string, está entre aspas!
+```{r}
+csv_url <- "http://s3.amazonaws.com/assets.datacamp.com/production/course_1561/datasets/chickwts.csv"
+tsv_url <- "http://s3.amazonaws.com/assets.datacamp.com/production/course_3026/datasets/tsv_data.tsv"
+```
+
+Cria-se o data frame a partir da leitura dos arquivos.
+```{r}
+csv_data <- read.csv(csv_url)
+tsv_data <- read.delim(tsv_url)
+```
+
+Examina-se o data frame.
+```{r}
+head(csv_data)
+head(tsv_data)
+```
+
+Podemos ainda fazer o download e ao mesmo tempo já escolhermos um arquivo de destino, no caso "feed_data.csv".
+```{r}
+download.file(url = csv_url, destfile = "feed_data.csv")
+# Lendo o arquivo para confirmar.
+csv_data <- read.csv("feed_data.csv")
+```
+
+Agora criamos uma nova coluna, weight ao quadrado e acrescentamos ao csv-data.
+Depois salvamos como RDS ("modified_feed_data.RDS"),
+lemos, criamos o df modified_feed_data e
+examinamos sua estrutura.
+
+```{r}
+csv_data$square_weight <- (csv_data$weight)^2
+saveRDS(object = csv_data, file = "modified_feed_data.RDS")
+modified_feed_data <- readRDS(file = "modified_feed_data.RDS")
+str(modified_feed_data)
+```
+
+# GET request. É pedir para pegar algo, algum dado da web. 
+O pacote que faz isso é o httr. 
+O get_result é o que pegou.
+O pageview_data é o conteúdo do que pegou.
+```{r}
+library(httr)
+get_result <- GET("http://httpbin.org/get")
+print(get_result)
+pageview_data <- content(get_result)
+print(pageview_data)
+str(pageview_data)
+```
+
+# O oposto de GET é o POST. 
+Neste você pede ao servidor que aceite algo seu.
+```{r}
+library(httr)
+post_result <- POST(url = "http://httpbin.org/post", body = "this is a test")
+post_result
+```
+
+# Fazendo queries para url.
+Não sei exatamente o que significa e para o que serve, mas certamente tem uma função. 
+Por hora vou abstrair e ver como se fazem estas queries.
+No caso abaixo colei 3 strings que formaram o directory_url e depois fiz o GET.
+```{r}
+directory_url <- paste("http://swapi.co/api", "people", "1", sep = "/")
+result <- GET(directory_url)
+```
+
+# Agora queries mais sofisticadas.
+Pode-se fazer as queries com paste, mas é mais prático usar o método abaixo.
+Criou-se uma lista denominada query_params, depois colocou-a após a url.
+```{r}
+query_params <- list(nationality = "americans", 
+    country = "antigua")
+parameter_response <- GET("https://httpbin.org/get", query = query_params)
+parameter_response
+```
+
