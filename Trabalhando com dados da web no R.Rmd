@@ -204,3 +204,7 @@ revs %>%
 
 # A estrutura do XML.
 É importante porque é o tipo de arquivo usado para as NFes.
+```{r}
+
+```
+
