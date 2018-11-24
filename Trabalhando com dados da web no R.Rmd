@@ -34,7 +34,7 @@ download.file(url = csv_url, destfile = "feed_data.csv")
 csv_data <- read.csv("feed_data.csv")
 ```
 
-Agora criamos uma nova coluna, weight ao quadrado e acrescentamos ao csv_data.
+Agora criamos uma nova coluna, weight ao quadrado e acrescentamos ao csv-data.
 Depois salvamos como RDS ("modified_feed_data.RDS"),
 lemos, criamos o df modified_feed_data e
 examinamos sua estrutura.
@@ -79,7 +79,6 @@ result <- GET(directory_url)
 # Agora queries mais sofisticadas.
 Pode-se fazer as queries com paste, mas é mais prático usar o método abaixo.
 Criou-se uma lista denominada query_params, depois colocou-a após a url.
-
 ```{r}
 query_params <- list(nationality = "americans", 
     country = "antigua")
